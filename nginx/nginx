@@ -1,0 +1,109 @@
+#! /bin/sh
+
+
+#Date:2019-07-08
+#Description: nginx start controll
+
+
+NGINX_BIN='/usr/local/nginx/sbin/nginx'
+CONFIG='/usr/local/nginx/conf/nginx.conf'
+
+case "$1" in
+    start)
+        echo -n "Starting nginx... "
+
+        PID=$(ps -ef | grep "$NGINX_BIN" | grep -v grep | awk '{print $2}')
+        if [ "$PID" != "" ]; then
+            echo "nginx (pid $PID) already running."
+            exit 1
+        fi
+
+        $NGINX_BIN -c $CONFIG
+
+        if [ "$?" != 0 ]; then
+            echo " failed"
+            exit 1
+        else
+            echo " done"
+        fi
+        ;;
+
+    stop)
+        echo -n "Stoping nginx... "
+
+        PID=$(ps -ef | grep "$NGINX_BIN" | grep -v grep | awk '{print $2}')
+        if [ "$PID" = "" ]; then
+            echo "nginx is not running."
+            exit 1
+        fi
+
+        $NGINX_BIN -s stop
+
+        if [ "$?" != 0 ] ; then
+            echo " failed. Use force-quit"
+            $0 force-quit
+        else
+            echo " done"
+        fi
+        ;;
+
+    status)
+        PID=$(ps -ef | grep "$NGINX_BIN" | grep -v grep | awk '{print $2}')
+        if [ "$PID" != "" ]; then
+            echo "nginx (pid $PID) is running..."
+        else
+            echo "nginx is stopped."
+            exit 0
+        fi
+        ;;
+
+    force-quit|kill)
+        echo -n "Terminating nginx... "
+
+        PID=$(ps -ef | grep "$NGINX_BIN" | grep -v grep | awk '{print $2}')
+        if [ "$PID" = "" ]; then
+            echo "nginx is is stopped."
+            exit 1
+        fi
+
+        kill $PID
+
+        if [ "$?" != 0 ]; then
+            echo " failed"
+            exit 1
+        else
+            echo " done"
+        fi
+        ;;
+
+    restart)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+
+    reload)
+        echo -n "Reload nginx... "
+
+        PID=$(ps -ef | grep "$NGINX_BIN" | grep -v grep | awk '{print $2}')
+        if [ "$PID" != "" ]; then
+            $NGINX_BIN -s reload
+            echo " done"
+        else
+            echo "nginx is not running, can't reload."
+            exit 1
+        fi
+        ;;
+
+    configtest)
+        echo -n "Test nginx configure files... "
+
+        $NGINX_BIN -t
+        ;;
+
+    *)
+        echo "Usage: $0 {start|stop|restart|reload|status|configtest|force-quit|kill}"
+        exit 1
+        ;;
+
+esac

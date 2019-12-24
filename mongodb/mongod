@@ -1,0 +1,54 @@
+#! /bin/bash
+
+
+
+EXEC=/opt/mongodb/bin/mongod
+PID=`ps -ef|grep mongod.conf|grep -v grep|awk '{printf $2}'`
+   
+PIDNUM=`ps -ef|grep mongod|wc -l`
+CONF="/etc/mongod.conf"
+   
+case "$1" in
+    start)
+        if [ -n "$PID" ]; then
+            echo "mongodb exists, process is already running or crashed"
+        else
+            echo -n "Starting mongodb server..."
+ 			$EXEC --config=$CONF
+            if [ "$?"="0" ]; then
+                echo " done"
+            else
+                echo " failed"
+            fi
+        fi
+        ;;
+    stop)
+        if [ -z "$PID" ]; then
+            echo "mongodb does not exist, process is not running"
+        else
+            
+            echo "Stopping  mongodb server..."
+            kill -9 ${PID}
+            if [ "$?"="0" ]; then
+                echo " done"
+            else
+                echo " failed"
+            fi
+        fi
+        ;;
+    restart)
+        ${0} stop
+        ${0} start
+        ;;
+    status)
+
+        if [ -n "$PID" ]; then
+            echo "mongodb server is running."
+        else
+            echo "mongodb server is stopped."
+        fi
+        ;;
+  *)
+    echo "Usage: /etc/init.d/mongod {start|stop|restart|status}" >&2
+        exit 1
+esac

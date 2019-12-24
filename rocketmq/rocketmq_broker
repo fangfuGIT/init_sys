@@ -1,0 +1,63 @@
+#! /bin/sh
+
+
+#Date:2019-07-08
+#Description: rocketmq_Broker start controll
+
+
+BINSTART='/opt/rocketmq/bin/mqbroker'
+BINSTOP='/opt/rocketmq/bin/mqshutdown'
+PID=`ps -ef|grep mqbroker|grep -v grep|awk '{printf $2}'`
+LOG='/opt/rocketmq/logs/rocketmqlogs/broker.log'
+
+case "$1" in
+    start)
+        echo -n "Starting rocketmq_Broker... "
+        if [ "$PID" != "" ]; then
+            echo "rocketmq_Broker (pid $PID) already running."
+            exit 1
+        fi
+        sh $BINSTART -n IPADDR:9876  > $LOG &
+        if [ "$?" != 0 ]; then
+            echo " failed"
+            exit 1
+        else
+            echo " done"
+        fi
+        ;;
+
+    stop)
+        echo -n "Stoping rocketmq_Broker... "
+        if [ "$PID" = "" ]; then
+            echo "rocketmq_Broker is not running."
+            exit 1
+        fi
+        sh $BINSTOP broker
+        sleep 3
+        if [ "$?" != 0 ] ; then
+            echo " stop failed."
+        else
+            echo " done"
+        fi
+        ;;
+
+    status)
+        if [ "$PID" != "" ]; then
+            echo "rocketmq_Broker (pid $PID) is running..."
+        else
+            echo "rocketmq_Broker is stopped."
+            exit 0
+        fi
+        ;;
+
+    restart)
+        $0 stop
+        sleep 5
+        $0 start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+
+esac
