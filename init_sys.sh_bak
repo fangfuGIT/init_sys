@@ -312,6 +312,13 @@ function redisInstall()
         cp -rf ${theFiledir}/redis/redis /etc/init.d/
         mkdir -p /usr/local/redis/etc
         cp -rf ${theFiledir}/redis/redis.conf /usr/local/redis/etc/redis.conf
+        groupadd rediser
+        useradd -s /sbin/nologin -g rediser rediser
+        ln -s /usr/local/redis/bin/redis-server /usr/bin/redis-server
+        ln -s /usr/local/redis/bin/redis-cli /usr/bin/redis-cli
+        mkdir -p /home/rediser/var/run
+        chown -R rediser:rediser /home/rediser/var
+        chown -R rediser:rediser /usr/local/redis/bin/redis-server
 
     }
 
@@ -328,28 +335,57 @@ function mongodbInstall()
         chmod +x /etc/init.d/mongod
         ln -s /opt/mongodb/bin/mongo /usr/bin/mongo
 cat > /etc/mongod.conf<<EOF
-systemLog: 
-   destination: file 
-   path: "/opt/mongodb/logs/mongodb.log" 
-   logAppend: true 
-storage: 
-   dbPath: "/data/mongodb" 
-   journal: 
-      enabled: true 
-   mmapv1: 
-     smallFiles: true 
-   wiredTiger: 
-      engineConfig: 
-        configString: cache_size=345M 
-processManagement: 
-      fork: true 
-net: 
-   #bindIp: 127.0.0.1 
-   port: 27017 
-setParameter: 
+systemLog:
+   destination: file
+   path: "/opt/mongodb/logs/mongodb.log"
+   logAppend: true
+processManagement:
+      fork: true
+net:
+   bindIp: 0.0.0.0
+   port: 28018
+setParameter:
    enableLocalhostAuthBypass: false
+#security:
+#   authorization: enabled
+#   clusterAuthMode: keyFile
+#   keyFile: /opt/mongodb/keyfile
+storage:
+   dbPath: "/data/mongodb"
+   journal:
+      enabled: true
+   directoryPerDB: false
+   engine: wiredTiger
+operationProfiling:
+   slowOpThresholdMs: 100
+   mode: off 
+replication:
+   replSetName: rynk_Set
 EOF
-    }
+
+#cat > /etc/mongod.conf<<EOF
+#systemLog: 
+#   destination: file 
+#   path: "/opt/mongodb/logs/mongodb.log" 
+#   logAppend: true 
+#storage: 
+#   dbPath: "/data/mongodb" 
+#   journal: 
+#      enabled: true 
+#   mmapv1: 
+#     smallFiles: true 
+#   wiredTiger: 
+#      engineConfig: 
+#        configString: cache_size=345M 
+#processManagement: 
+#      fork: true 
+#net: 
+#   #bindIp: 127.0.0.1 
+#   port: 27017 
+#setParameter: 
+#   enableLocalhostAuthBypass: false
+#EOF
+     }
 
 
 
@@ -437,47 +473,58 @@ function fastdfsInstall()
       sed -i 's/base_path=\/home\/yuqing\/fastdfs/base_path=\/data\/fdfs\/storage/g' /etc/fdfs/storage.conf
       sed -i 's/store_path0=\/home\/yuqing\/fastdfs/store_path0=\/data\/fdfs\/storage/g' /etc/fdfs/storage.conf
       sed -i 's/192.168.209.121/'${localIP}'/g' /etc/fdfs/storage.conf
-      sed -i 's/tracker_server\ =\ 192.168.209.122\:22122/\#tracker_server\ =\ 192.168.209.122\:22122/g' /etc/fdfs/storage.conf
       ln -s /usr/bin/fdfs_trackerd /usr/local/bin/ 
-      ln -s /usr/bin/stop.sh  /usr/local/bin
+      ln -s /usr/bin/stop.sh  /usr/local/bin 
       ln -s /usr/bin/restart.sh  /usr/local/bin
       mkdir -p /data/fdfs/storage/
       ln -s /usr/bin/fdfs_storaged /usr/local/bin/ 
       service fdfs_trackerd start
       service fdfs_storaged start 
+    }
 
-      check_nginx_run
-      yum install -y pcre-devel unzip gcc gcc-c++ openssl openssl-devel
-      cp -rf ${theFiledir}/nginx/master.zip /opt
-      cp -rf ${theFiledir}/nginx/nginx-1.9.11.tar.gz /opt/fastdfs
-      cp -rf ${theFiledir}/nginx/nginx /etc/init.d/
-      yum install -y pcre pcre-devel zlib zlib-devel openssl openssl-devel
-      cd /opt && unzip master.zip
-      cd /opt/fastdfs && tar -xvf nginx-1.9.11.tar.gz
-      cd nginx-1.9.11/
-      ./configure\
-       --prefix=/usr/local/nginx \
-       --add-module=/opt/fastdfs-nginx-module-master/src \
-       --with-http_ssl_module \
-       --with-stream --user=nginx \
-       --group=nginx            
-      make && make install
-      cp -rf ${theFiledir}/nginx/nginx.conf /usr/local/nginx/conf/nginx.conf
-      mkdir -p /var/log/nginx
-      mkdir -p /etc/nginx/conf.d
-      mkdir -p /data/fdfs/storage/group0/M00
-      cp -rf ${theFiledir}/fdfs/fastdfs.conf /usr/local/nginx/conf/conf.d/fastdfs.conf
-      ln -s /data/fdfs/storage/data/ /data/fdfs/storage/group0/M00
-      cd /opt/fastdfs/fastdfs-master/conf
-      cp anti-steal.jpg http.conf mime.types /etc/fdfs/
-      cd /opt/fastdfs-nginx-module-master/src
-      cp mod_fastdfs.conf /etc/fdfs/
-      #sed -i '$i\include conf.d/*.conf;' /usr/local/nginx/conf/nginx.conf
-      sed -i 's/base_path=\/tmp/base_path=\/data\/fdfs\/storage\//g' /etc/fdfs/mod_fastdfs.conf
-      sed -i 's/tracker:22122/${localIP}:22122/g' /etc/fdfs/mod_fastdfs.conf
-      sed -i 's/group_name=group1/group_name=group0/g' /etc/fdfs/mod_fastdfs.conf
-      sed -i 's/url_have_group_name = false/url_have_group_name = true/g' /etc/fdfs/mod_fastdfs.conf
-      sed -i 's/store_path0=\/home\/yuqing\/fastdfs/store_path0=\/data\/fdfs\/storage/g' /etc/fdfs/mod_fastdfs.conf
+
+function nginxInstall()
+    {   
+        check_nginx_run
+        yum install -y perl unzip gcc gcc-c++
+        cp -rf ${theFiledir}/nginx/master.zip /opt
+        cp -rf ${theFiledir}/nginx/nginx-1.9.11.tar.gz /opt/fastdfs
+        cp -rf ${theFiledir}/nginx/nginx /etc/init.d/
+        yum install -y pcre pcre-devel zlib zlib-devel openssl openssl-devel
+        cd /opt && unzip master.zip
+        cd /opt/fastdfs && tar -xvf nginx-1.9.11.tar.gz
+        cd nginx-1.9.11/
+        ./configure\
+         --prefix=/usr/local/nginx \
+         --add-module=/opt/fastdfs-nginx-module-master/src \
+         --with-http_ssl_module \
+         --with-stream --user=nginx \
+         --group=nginx            
+        make && make install
+        cp -rf ${theFiledir}/nginx/nginx.conf /usr/local/nginx/conf/nginx.conf
+        mkdir -p /etc/nginx/conf.d
+       
+        mkdir -p /data/fdfs/storage/group0
+       # mkdir -p /data/fdfs/storage/group0/M00
+       
+        #cp -rf ${theFiledir}/fdfs/fastdfs.conf /etc/nginx/conf.d/fastdfs.conf
+        cp -rf ${theFiledir}/fdfs/fastdfs.conf /usr/local/nginx/conf/conf.d/fastdfs.conf
+
+
+        ln -s /data/fdfs/storage/data/ /data/fdfs/storage/group0/M00
+        cd /opt/fastdfs/fastdfs-master/conf
+        cp anti-steal.jpg http.conf mime.types /etc/fdfs/
+        cd /opt/fastdfs-nginx-module-master/src
+        cp mod_fastdfs.conf /etc/fdfs/
+        sed -i '$i\include conf.d/*.conf;' /usr/local/nginx/conf/nginx.conf
+        
+        sed -i 's/base_path=\/tmp/base_path=\/data\/fdfs\/storage\//g' /etc/fdfs/mod_fastdfs.conf
+       # sed -i 's' /etc/fdfs/mod_fastdfs.conf
+
+        sed -i 's/tracker:22122/${localIP}:22122/g' /etc/fdfs/mod_fastdfs.conf
+        ############${localIP}#####
+        sed -i 's/group_name=group1/group_name=group0/g' /etc/fdfs/mod_fastdfs.conf
+        sed -i 's/url_have_group_name = false/url_have_group_name = true/g' /etc/fdfs/mod_fastdfs.conf
 cat >> /etc/fdfs/mod_fastdfs.conf<<EOF
 [group0] 
 group_name=group0 
@@ -485,18 +532,18 @@ storage_server_port=23000
 store_path_count=1 
 store_path0=/data/fdfs/storage 
 EOF
-      service fdfs_storaged restart 
-      service fdfs_trackerd restart 
-      useradd -s /sbin/nologin -M nginx
-      chmod +x /etc/init.d/nginx
+        service fdfs_storaged restart 
+        service fdfs_trackerd restart 
+        useradd -s /sbin/nologin -M nginx
+        chmod +x /etc/init.d/nginx
 
     }
 
 
-function nginxInstall()
+function nginxCleanInstall()
     {
         check_nginx_run
-       	yum install -y pcre-devel unzip gcc gcc-c++ openssl openssl-devel        
+        yum install -y pcre-devel unzip gcc gcc-c++ openssl openssl-devel
         cp -rf ${theFiledir}/nginx/nginx-1.9.11.tar.gz /opt/
         cp -rf ${theFiledir}/nginx/nginx /etc/init.d/
         groupadd nginx
@@ -555,6 +602,8 @@ function all_run()
         service fdfs_storaged start 
         service fdfs_trackerd start
         check_run fdfs
+
+        nginxInstall
         /etc/init.d/nginx start
         check_run nginx
 
@@ -601,11 +650,12 @@ function main()
                 service fdfs_storaged start 
                 service fdfs_trackerd start
                 check_run fdfs
+                nginxInstall
                 /etc/init.d/nginx start
                 check_run nginx
                 ;;
             nginx)
-                nginxInstall
+                nginxCleanInstall
                 /etc/init.d/nginx start
                 check_run nginx
                 ;;
@@ -639,6 +689,11 @@ function main()
         echo -e "\033[33m +------------------------------------------------------------------------+ \033[0m"
         echo " "
 		}
+
+#tracker_server=10.148.0.8:22122
+#tracker_server=10.148.0.10:22122
+#
+#
 
 main $*
 
