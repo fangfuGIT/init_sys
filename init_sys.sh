@@ -9,7 +9,7 @@
 function getLocalIP()
         {
               # ifconfig | grep -o 'inet [0-9.]*' | grep -o '[0-9.]*$' | grep -e '^192\.' -e '^10\.' -e '^172\.'
-               ip addr | grep -o 'inet [0-9.]*' | grep -o '[0-9.]*$' | grep -e '^192\.' -e '^10\.' -e '^172\.'
+               ip addr | grep -o 'inet [0-9.]*' | grep -o '[0-9.]*$' | grep -e '^192\.' -e '^10\.' -e '^172\.' | head -n 1
         }
 
 
@@ -464,6 +464,7 @@ function fastdfsInstall()
       make && make install
       cp -rf ${theFiledir}/nginx/nginx.conf /usr/local/nginx/conf/nginx.conf
       mkdir -p /var/log/nginx
+      mkdir -p /usr/local/nginx/conf/conf.d
       mkdir -p /etc/nginx/conf.d
       mkdir -p /data/fdfs/storage/group0/M00
       cp -rf ${theFiledir}/fdfs/fastdfs.conf /usr/local/nginx/conf/conf.d/fastdfs.conf
@@ -474,7 +475,7 @@ function fastdfsInstall()
       cp mod_fastdfs.conf /etc/fdfs/
       #sed -i '$i\include conf.d/*.conf;' /usr/local/nginx/conf/nginx.conf
       sed -i 's/base_path=\/tmp/base_path=\/data\/fdfs\/storage\//g' /etc/fdfs/mod_fastdfs.conf
-      sed -i 's/tracker:22122/${localIP}:22122/g' /etc/fdfs/mod_fastdfs.conf
+      sed -i 's/tracker:22122/'${localIP}':22122/g' /etc/fdfs/mod_fastdfs.conf
       sed -i 's/group_name=group1/group_name=group0/g' /etc/fdfs/mod_fastdfs.conf
       sed -i 's/url_have_group_name = false/url_have_group_name = true/g' /etc/fdfs/mod_fastdfs.conf
       sed -i 's/store_path0=\/home\/yuqing\/fastdfs/store_path0=\/data\/fdfs\/storage/g' /etc/fdfs/mod_fastdfs.conf
