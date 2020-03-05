@@ -498,12 +498,13 @@ function nginxInstall()
     {
         check_nginx_run
        	yum install -y pcre-devel unzip gcc gcc-c++ openssl openssl-devel        
-        cp -rf ${theFiledir}/nginx/nginx-1.9.11.tar.gz /opt/
+        cp -rf ${theFiledir}/nginx/nginx-1.17.9.tar.gz /opt/
         cp -rf ${theFiledir}/nginx/nginx /etc/init.d/
         groupadd nginx
         useradd -s /sbin/nologin -g nginx nginx
-        cd /opt && tar -xvf nginx-1.9.11.tar.gz
-        cd nginx-1.9.11/
+        cd /opt && tar -xvf nginx-1.17.9.tar.gz
+       # cd /opt && tar -xvf nginx-1.9.11.tar.gz
+        cd nginx-1.17.9/
         ./configure\
          --prefix=/usr/local/nginx \
          --with-http_ssl_module \
@@ -511,7 +512,7 @@ function nginxInstall()
          --group=nginx
          make && make install
         cp -rf ${theFiledir}/nginx/nginx.conf /usr/local/nginx/conf/nginx.conf
-        rm -rf /opt/nginx-1.9.11.tar.gz
+        rm -rf /opt/nginx-1.17.9.tar.gz
         chmod +x /etc/init.d/nginx
         mkdir -p /var/log/nginx
 
